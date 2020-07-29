@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.util.IOUtils;
 import com.alibaba.fastjson.JSON;
 
 @SpringBootApplication
@@ -237,36 +238,21 @@ public class DemoApplication {
   }
 
   @GetMapping("/audio")
-  public String audio(HttpServletRequest request, HttpServletResponse response,
+  public void audio(HttpServletRequest request, HttpServletResponse response,
       @RequestParam(value = "url", defaultValue = "") String url) {
-    response.setHeader("Content-Type", "audio/mp3");
-    response.setHeader("Accept-Ranges", "bytes");
-    // response.setHeader("Content-Disposition", "attachment;fileName=" +
-    // file_name);
-
     if (url.length() > 0) {
       try {
-        System.out.println(Util.decryptAES(url));
-        // URL audioUrl = new URL(Util.decryptAES(url));
-        // BufferedInputStream bufferedInputStream = new BufferedInputStream(audioUrl.openStream());
-        ServletOutputStream outStream = response.getOutputStream();
-        FileInputStream inputStream = new FileInputStream(this.documentRoot + File.separator + "public" + File.separator + "2.mp3" );
-
-        int b = 0;
-        byte[] buffer = new byte[1024];
-        while ((b = inputStream.read(buffer)) != -1) {
-          outStream.write(buffer, 0, b);
-        }
-
-        // bufferedInputStream.close();
-        inputStream.close();
-        outStream.flush();
-        outStream.close();
+        String aUrl = Util.decryptAES(url);
+        System.out.println(aUrl);
+        URL audioUrl = new URL(aUrl);
+        InputStream inputStream = audioUrl.openStream();
+        response.setContentType("audio/mp3;charset=UTF-8");
+        IOUtils.copy(audioUrl.openStream(), response.getOutputStream());
+        response.flushBuffer();
       } catch (Exception e) {
         e.printStackTrace();
       }
     }
-    return "";
   }
 
 }
