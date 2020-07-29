@@ -1,19 +1,16 @@
 package com.example.demo;
 
 import java.net.URL;
-import java.net.URLConnection;
+import java.net.HttpURLConnection;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.InputStream;
 import java.io.BufferedReader;
-import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.FileInputStream;
+import java.io.OutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.ServletOutputStream;
 import java.util.Calendar;
 
 import org.springframework.boot.SpringApplication;
@@ -223,7 +220,7 @@ public class DemoApplication {
     ApiResponse ar = this.validation(tex, cuId, tok);
     if (ar.getCode() == 0) {
       Oauth ao = this.getOauth();
-      String text2audioUrl = "https://tsn.baidu.com/text2audio?tex=" + tex + "&cuid=" + cuId + "&tok=" + ao.getToken()
+      String text2audioUrl = "https://tsn.baidu.com/text2audio?tex=" + Util.urlEncode(Util.urlEncode(tex)) + "&cuid=" + cuId + "&tok=" + ao.getToken()
           + "&lan=zh&ctp=1";
       try {
         ar.getContent().setUrl(Util.encryptAES(text2audioUrl));
@@ -246,22 +243,25 @@ public class DemoApplication {
 
     if (url.length() > 0) {
       try {
-        System.out.println(Util.decryptAES(url));
-        // URL audioUrl = new URL(Util.decryptAES(url));
-        // BufferedInputStream bufferedInputStream = new BufferedInputStream(audioUrl.openStream());
-        ServletOutputStream outStream = response.getOutputStream();
-        FileInputStream inputStream = new FileInputStream(this.documentRoot + File.separator + "public" + File.separator + "2.mp3" );
+        String aUrl = Util.decryptAES(url);
+        HttpURLConnection conn = (HttpURLConnection) new URL(aUrl).openConnection();
+        conn.setDoInput(true);
+        conn.setDoOutput(true);
+        conn.setConnectTimeout(5000);
 
-        int b = 0;
-        byte[] buffer = new byte[1024];
-        while ((b = inputStream.read(buffer)) != -1) {
-          outStream.write(buffer, 0, b);
-        }
+        String contentType = conn.getContentType();
+        if (contentType.contains("audio/")) {
+          byte[] bytes = Util.getResponseBytes(conn);
+   
+          OutputStream outputStream = response.getOutputStream();
+          outputStream.write(bytes, 0, bytes.length);
+          outputStream.close();
+      } else {
+          System.err.println("ERROR: content-type= " + contentType);
+          String res = Util.getResponseString(conn);
+          System.err.println(res);
+      }
 
-        // bufferedInputStream.close();
-        inputStream.close();
-        outStream.flush();
-        outStream.close();
       } catch (Exception e) {
         e.printStackTrace();
       }
