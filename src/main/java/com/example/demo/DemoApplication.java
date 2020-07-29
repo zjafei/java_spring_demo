@@ -1,13 +1,19 @@
 package com.example.demo;
 
 import java.net.URL;
+import java.net.URLConnection;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.io.BufferedReader;
-import javax.servlet.http.HttpServletRequest;
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.FileInputStream;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.ServletOutputStream;
 import java.util.Calendar;
 
 import org.springframework.boot.SpringApplication;
@@ -58,11 +64,15 @@ public class DemoApplication {
     }
   }
 
-  class Context {
+  class Content {
     private String url;
 
-    public Context() {
+    public Content() {
       this.url = "";
+    }
+
+    public void setUrl(String url) {
+      this.url = url;
     }
 
     public String getUrl() {
@@ -73,12 +83,12 @@ public class DemoApplication {
   class ApiResponse {
     private int code;
     private String msg;
-    private Context context;
+    private Content content;
 
     public ApiResponse() {
       this.code = 5;
       this.msg = null;
-      this.context = new Context();
+      this.content = new Content();
     }
 
     public void set(int code, String msg) {
@@ -94,8 +104,8 @@ public class DemoApplication {
       return this.msg;
     }
 
-    public Context getContext() {
-      return this.context;
+    public Content getContent() {
+      return this.content;
     }
   }
 
@@ -212,11 +222,51 @@ public class DemoApplication {
 
     ApiResponse ar = this.validation(tex, cuId, tok);
     if (ar.getCode() == 0) {
-      this.getOauth();
+      Oauth ao = this.getOauth();
+      String text2audioUrl = "https://tsn.baidu.com/text2audio?tex=" + tex + "&cuid=" + cuId + "&tok=" + ao.getToken()
+          + "&lan=zh&ctp=1";
+      try {
+        ar.getContent().setUrl(Util.encryptAES(text2audioUrl));
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
     }
     String arJson = JSONObject.toJSONString(ar);
 
-    return arJson;
+    return callback.length() == 0 ? arJson : callback + "(" + arJson + ")";
+  }
+
+  @GetMapping("/audio")
+  public String audio(HttpServletRequest request, HttpServletResponse response,
+      @RequestParam(value = "url", defaultValue = "") String url) {
+    response.setHeader("Content-Type", "audio/mp3");
+    response.setHeader("Accept-Ranges", "bytes");
+    // response.setHeader("Content-Disposition", "attachment;fileName=" +
+    // file_name);
+
+    if (url.length() > 0) {
+      try {
+        System.out.println(Util.decryptAES(url));
+        // URL audioUrl = new URL(Util.decryptAES(url));
+        // BufferedInputStream bufferedInputStream = new BufferedInputStream(audioUrl.openStream());
+        ServletOutputStream outStream = response.getOutputStream();
+        FileInputStream inputStream = new FileInputStream(this.documentRoot + File.separator + "public" + File.separator + "2.mp3" );
+
+        int b = 0;
+        byte[] buffer = new byte[1024];
+        while ((b = inputStream.read(buffer)) != -1) {
+          outStream.write(buffer, 0, b);
+        }
+
+        // bufferedInputStream.close();
+        inputStream.close();
+        outStream.flush();
+        outStream.close();
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+    return "";
   }
 
 }
