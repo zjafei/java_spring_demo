@@ -26,10 +26,6 @@ import com.alibaba.fastjson.JSON;
 @SpringBootApplication
 @RestController
 public class DemoApplication {
-
-  // private final int spd = 5; // 语速，取值0-15，默认为5中语速
-  // private final int ctp = 1; // 客户端类型选择，web端填写固定值1
-  // private final String lan = "zh"; // 固定值zh。语言选择,目前只有中英文混合模式，填写固定值zh
   private final String documentRoot = new File(Thread.currentThread().getContextClassLoader().getResource("").getPath())
       .getParentFile().getParent();
 
@@ -242,8 +238,7 @@ public class DemoApplication {
     response.setHeader("Accept-Ranges", "bytes");
     if (url.length() > 0) {
       try {
-        String aUrl = Util.decryptAES(url);
-        HttpURLConnection conn = (HttpURLConnection) new URL(aUrl).openConnection();
+        HttpURLConnection conn = (HttpURLConnection) new URL(Util.decryptAES(url)).openConnection();
         conn.setDoInput(true);
         conn.setDoOutput(true);
         conn.setConnectTimeout(5000);
@@ -253,15 +248,13 @@ public class DemoApplication {
           int b = 0;
           byte[] buffer = new byte[1024];
           OutputStream outputStream = response.getOutputStream();
-          BufferedInputStream inputStream = new BufferedInputStream(conn.getInputStream());
-          while ((b = inputStream.read(buffer)) != -1) {
+          while ((b = new BufferedInputStream(conn.getInputStream()).read(buffer)) != -1) {
             outputStream.write(buffer, 0, b);
           }
           outputStream.close();
         } else {
           System.err.println("ERROR: content-type= " + contentType);
-          String res = Util.getResponseString(conn);
-          System.err.println(res);
+          System.err.println(Util.getResponseString(conn));
         }
 
       } catch (Exception e) {
