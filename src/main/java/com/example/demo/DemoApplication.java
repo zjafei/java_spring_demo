@@ -1,19 +1,18 @@
 package com.example.demo;
 
 import java.net.URL;
-import java.net.URLConnection;
+import java.net.HttpURLConnection;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.InputStream;
 import java.io.BufferedReader;
 import java.io.BufferedInputStream;
+
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.FileInputStream;
+import java.io.OutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.ServletOutputStream;
 import java.util.Calendar;
 
 import org.springframework.boot.SpringApplication;
@@ -22,7 +21,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.util.IOUtils;
 import com.alibaba.fastjson.JSON;
 
 @SpringBootApplication
@@ -224,8 +222,8 @@ public class DemoApplication {
     ApiResponse ar = this.validation(tex, cuId, tok);
     if (ar.getCode() == 0) {
       Oauth ao = this.getOauth();
-      String text2audioUrl = "https://tsn.baidu.com/text2audio?tex=" + tex + "&cuid=" + cuId + "&tok=" + ao.getToken()
-          + "&lan=zh&ctp=1";
+      String text2audioUrl = "https://tsn.baidu.com/text2audio?tex=" + Util.urlEncode(Util.urlEncode(tex)) + "&cuid="
+          + cuId + "&tok=" + ao.getToken() + "&lan=zh&ctp=1";
       try {
         ar.getContent().setUrl(Util.encryptAES(text2audioUrl));
       } catch (Exception e) {
@@ -240,15 +238,32 @@ public class DemoApplication {
   @GetMapping("/audio")
   public void audio(HttpServletRequest request, HttpServletResponse response,
       @RequestParam(value = "url", defaultValue = "") String url) {
+    response.setHeader("Content-Type", "audio/mp3");
+    response.setHeader("Accept-Ranges", "bytes");
     if (url.length() > 0) {
       try {
         String aUrl = Util.decryptAES(url);
-        System.out.println(aUrl);
-        URL audioUrl = new URL(aUrl);
-        InputStream inputStream = audioUrl.openStream();
-        response.setContentType("audio/mp3;charset=UTF-8");
-        IOUtils.copy(audioUrl.openStream(), response.getOutputStream());
-        response.flushBuffer();
+        HttpURLConnection conn = (HttpURLConnection) new URL(aUrl).openConnection();
+        conn.setDoInput(true);
+        conn.setDoOutput(true);
+        conn.setConnectTimeout(5000);
+
+        String contentType = conn.getContentType();
+        if (contentType.contains("audio/")) {
+          int b = 0;
+          byte[] buffer = new byte[1024];
+          OutputStream outputStream = response.getOutputStream();
+          BufferedInputStream inputStream = new BufferedInputStream(conn.getInputStream());
+          while ((b = inputStream.read(buffer)) != -1) {
+            outputStream.write(buffer, 0, b);
+          }
+          outputStream.close();
+        } else {
+          System.err.println("ERROR: content-type= " + contentType);
+          String res = Util.getResponseString(conn);
+          System.err.println(res);
+        }
+
       } catch (Exception e) {
         e.printStackTrace();
       }
