@@ -222,8 +222,8 @@ public class DemoApplication {
     ApiResponse ar = this.validation(tex, cuId, tok);
     if (ar.getCode() == 0) {
       Oauth ao = this.getOauth();
-      String text2audioUrl = "https://tsn.baidu.com/text2audio?tex=" + Util.urlEncode(Util.urlEncode(tex)) + "&cuid=" + cuId + "&tok=" + ao.getToken()
-          + "&lan=zh&ctp=1";
+      String text2audioUrl = "https://tsn.baidu.com/text2audio?tex=" + Util.urlEncode(Util.urlEncode(tex)) + "&cuid="
+          + cuId + "&tok=" + ao.getToken() + "&lan=zh&ctp=1";
       try {
         ar.getContent().setUrl(Util.encryptAES(text2audioUrl));
       } catch (Exception e) {
@@ -258,11 +258,11 @@ public class DemoApplication {
             outputStream.write(buffer, 0, b);
           }
           outputStream.close();
-      } else {
+        } else {
           System.err.println("ERROR: content-type= " + contentType);
           String res = Util.getResponseString(conn);
           System.err.println(res);
-      }
+        }
 
       } catch (Exception e) {
         e.printStackTrace();
