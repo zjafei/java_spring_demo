@@ -5,6 +5,8 @@ import java.net.HttpURLConnection;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.BufferedReader;
+import java.io.BufferedInputStream;
+
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -234,13 +236,10 @@ public class DemoApplication {
   }
 
   @GetMapping("/audio")
-  public String audio(HttpServletRequest request, HttpServletResponse response,
+  public void audio(HttpServletRequest request, HttpServletResponse response,
       @RequestParam(value = "url", defaultValue = "") String url) {
     response.setHeader("Content-Type", "audio/mp3");
     response.setHeader("Accept-Ranges", "bytes");
-    // response.setHeader("Content-Disposition", "attachment;fileName=" +
-    // file_name);
-
     if (url.length() > 0) {
       try {
         String aUrl = Util.decryptAES(url);
@@ -251,10 +250,13 @@ public class DemoApplication {
 
         String contentType = conn.getContentType();
         if (contentType.contains("audio/")) {
-          byte[] bytes = Util.getResponseBytes(conn);
-   
+          int b = 0;
+          byte[] buffer = new byte[1024];
           OutputStream outputStream = response.getOutputStream();
-          outputStream.write(bytes, 0, bytes.length);
+          BufferedInputStream inputStream = new BufferedInputStream(conn.getInputStream());
+          while ((b = inputStream.read(buffer)) != -1) {
+            outputStream.write(buffer, 0, b);
+          }
           outputStream.close();
       } else {
           System.err.println("ERROR: content-type= " + contentType);
@@ -266,7 +268,6 @@ public class DemoApplication {
         e.printStackTrace();
       }
     }
-    return "";
   }
 
 }
